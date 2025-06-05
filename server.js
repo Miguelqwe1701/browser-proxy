@@ -130,6 +130,7 @@ wss.on("connection", async (ws, req) => {
 });
 
 const PORT = process.env.PORT || 3000;
+server.timeout = 0;
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
