@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "express": "^5.1.0",
+    "playwright": "^1.52.0",
+    "puppeteer": "^24.10.0",
+    "ws": "^8.18.2"
+  }
+}
