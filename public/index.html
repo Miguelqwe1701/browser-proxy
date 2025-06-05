@@ -67,7 +67,7 @@
     const controlBtn = document.getElementById("controlBtn");
 
     const room = new URLSearchParams(location.search).get("room");
-    const socket = new WebSocket(`ws://${location.host}/?room=${room || ""}`);
+    const socket = new WebSocket(`wss://${location.host}/?room=${room || ""}`);
 
     let isControlling = false;
 
