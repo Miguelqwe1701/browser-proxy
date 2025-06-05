@@ -14,8 +14,8 @@
       width: 100vw;
       height: 100vh;
       object-fit: contain;
-      background: #000;
       display: block;
+      background: #000;
     }
     #loading {
       position: absolute;
@@ -27,7 +27,6 @@
       justify-content: center;
       font-size: 2em;
       z-index: 10;
-      transition: opacity 0.5s;
     }
     #cursor {
       position: absolute;
@@ -40,23 +39,32 @@
       z-index: 9;
       display: none;
     }
-    #controlBtn {
+    #controlBtn, #roomLink {
       position: absolute;
-      top: 10px;
-      left: 10px;
       z-index: 15;
-      padding: 8px 16px;
-      background: #333;
+      padding: 6px 12px;
+      background: #222;
       color: white;
       border: none;
       border-radius: 4px;
+      font-size: 14px;
+    }
+    #controlBtn {
+      top: 10px;
+      left: 10px;
       cursor: pointer;
+    }
+    #roomLink {
+      top: 10px;
+      right: 10px;
+      user-select: all;
     }
   </style>
 </head>
 <body>
-  <div id="loading">Setting up server..</div>
+  <div id="loading">Connecting to server...</div>
   <button id="controlBtn">Control Cursor</button>
+  <div id="roomLink">Room: Loading...</div>
   <img id="screen" src="">
   <div id="cursor"></div>
 
@@ -65,20 +73,12 @@
     const loading = document.getElementById("loading");
     const cursor = document.getElementById("cursor");
     const controlBtn = document.getElementById("controlBtn");
+    const roomLink = document.getElementById("roomLink");
 
-    const room = new URLSearchParams(location.search).get("room");
-    const socket = new WebSocket(`wss://${location.host}/?room=${room || ""}`);
+    let room = new URLSearchParams(location.search).get("room");
+    const socket = new WebSocket(`ws://${location.host}/?room=${room || ""}`);
 
     let isControlling = false;
-
-    controlBtn.onclick = () => {
-      screenImg.requestPointerLock();
-    };
-
-    document.addEventListener("pointerlockchange", () => {
-      isControlling = document.pointerLockElement === screenImg;
-    });
-
     let mouseX = window.innerWidth / 2;
     let mouseY = window.innerHeight / 2;
 
@@ -87,26 +87,32 @@
       cursor.style.top = `${y}px`;
     }
 
-    let lastSentTime = 0;
-    const SEND_INTERVAL = 5; // ms
+    controlBtn.onclick = () => {
+      screenImg.requestPointerLock();
+    };
+
+    document.addEventListener("pointerlockchange", () => {
+      isControlling = document.pointerLockElement === screenImg;
+      cursor.style.display = isControlling ? "block" : "none";
+    });
 
     screenImg.addEventListener("mousemove", (e) => {
       if (!isControlling) return;
+
       mouseX += e.movementX;
       mouseY += e.movementY;
+
+      // Keep within screen bounds
       mouseX = Math.max(0, Math.min(window.innerWidth, mouseX));
       mouseY = Math.max(0, Math.min(window.innerHeight, mouseY));
+
       updateCursorPos(mouseX, mouseY);
 
-      const now = performance.now();
-      if (now - lastSentTime > SEND_INTERVAL) {
-        socket.send(JSON.stringify({
-          type: "mouse",
-          x: mouseX,
-          y: mouseY
-        }));
-        lastSentTime = now;
-      }
+      socket.send(JSON.stringify({
+        type: "mouse",
+        x: mouseX,
+        y: mouseY
+      }));
     });
 
     screenImg.addEventListener("mousedown", (e) => {
@@ -148,6 +154,19 @@
         deltaX: e.deltaX,
         deltaY: e.deltaY
       }));
+    });
+
+    socket.addEventListener("message", (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === "screenshot") {
+        screenImg.src = `data:image/jpeg;base64,${msg.data}`;
+      } else if (msg.type === "room") {
+        room = msg.room;
+        roomLink.textContent = `Room: ${room}`;
+        history.replaceState(null, "", `?room=${room}`);
+      } else if (msg.type === "ready") {
+        loading.style.display = "none";
+      }
     });
 
     updateCursorPos(mouseX, mouseY);
