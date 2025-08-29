@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const { firefox } = require("playwright");
 const WebSocket = require("ws");
@@ -31,7 +30,7 @@ wss.on("connection", async (ws, req) => {
   }
 
   if (!sessions[room]) {
-    console.log("🔓 Launching Firefox for room:", room);
+    console.log("Launching Firefox for room:", room);
     const browser = await firefox.launch({ headless: true });
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -79,10 +78,10 @@ wss.on("connection", async (ws, req) => {
         if (msg.action === "move") {
           await page.mouse.move(msg.x, msg.y);
         } else if (msg.action === "down") {
-          await page.mouse.move(msg.x, msg.y); // Ensure cursor is in place
+          await page.mouse.move(msg.x, msg.y); 
           await page.mouse.down({ button: msg.button });
         } else if (msg.action === "up") {
-          await page.mouse.move(msg.x, msg.y); // Ensure cursor is in place
+          await page.mouse.move(msg.x, msg.y); 
           await page.mouse.up({ button: msg.button });
         }
       } catch (err) {
@@ -127,7 +126,7 @@ setInterval(async () => {
     const isEmpty = !clientsInRoom[room] || clientsInRoom[room].size === 0;
 
     if (inactive && isEmpty) {
-      console.log(`💤 Room ${room} inactive for 3 mins. Cleaning up.`);
+      console.log(`Room ${room} inactive for 3 mins. Cleaning up.`);
       try {
         await sessions[room].browser.close();
       } catch {}
