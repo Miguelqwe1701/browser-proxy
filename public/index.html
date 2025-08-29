@@ -86,7 +86,6 @@
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          // draw all other cursors
           for (const [id, c] of Object.entries(remoteCursors)) {
             ctx.beginPath();
             ctx.arc(c.x, c.y, 6, 0, 2 * Math.PI);
@@ -97,7 +96,6 @@
             ctx.stroke();
           }
 
-          // draw my own cursor last on top
           ctx.beginPath();
           ctx.arc(myCursor.x, myCursor.y, 6, 0, 2 * Math.PI);
           ctx.fillStyle = "red";
@@ -124,7 +122,6 @@
       }
     }
 
-    // mouse lock
     lockBtn.addEventListener("click", () => {
       canvas.requestPointerLock();
     });
@@ -153,7 +150,6 @@
       }
     });
 
-    // mouse click
     canvas.addEventListener("mousedown", (e) => {
       if (document.pointerLockElement === canvas) {
         const btn = e.button === 2 ? "right" : "left";
@@ -180,7 +176,6 @@
       }
     });
 
-    // keyboard input
     window.addEventListener("keydown", (e) => {
       ws.send(JSON.stringify({
         type: "keyboard",
