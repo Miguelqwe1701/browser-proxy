@@ -61,7 +61,7 @@ wss.on("connection", async (ws, req) => {
     } catch (err) {
       console.error("Screenshot error:", err);
     }
-  }, 100);
+  }, 1000 / 15); 
 
   ws.on("message", async (message) => {
     let msg;
@@ -118,11 +118,10 @@ wss.on("connection", async (ws, req) => {
   });
 });
 
-// Room cleanup every 60 seconds
 setInterval(async () => {
   const now = Date.now();
   for (const room in sessions) {
-    const inactive = now - (lastActivity[room] || 0) > 180000; // 3 mins
+    const inactive = now - (lastActivity[room] || 0) > 180000; 
     const isEmpty = !clientsInRoom[room] || clientsInRoom[room].size === 0;
 
     if (inactive && isEmpty) {
