@@ -1,202 +1,100 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Migood Browser</title>
-  <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      overflow: hidden;
-      background: #111;
-      color: white;
-      font-family: sans-serif;
-    }
-    canvas {
-      display: block;
-      background: black;
-      cursor: none;
-    }
-    #status {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      background: rgba(0,0,0,0.7);
-      padding: 10px 20px;
-      border-radius: 10px;
-      font-size: 20px;
-      z-index: 10;
-    }
-    #lockBtn {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      z-index: 10;
-      padding: 10px 20px;
-      font-size: 18px;
-      border: none;
-      border-radius: 10px;
-      background: #2c2c2c;
-      color: white;
-      cursor: pointer;
-    }
-    #lockBtn:hover {
-      background: #444;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>browser proxy!</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#000;overflow:hidden;font-family:system-ui;color:#fff}
+  canvas{display:block;cursor:none}
+  #s{position:absolute;top:20px;left:20px;background:#000c;padding:12px 20px;border-radius:12px;font:18px system-ui;z-index:10;opacity:1;transition:opacity 1s}
+  #l{position:absolute;bottom:24px;left:24px;z-index:10;padding:14px 28px;background:#333;color:#fff;border:none;border-radius:16px;font:16px system-ui;cursor:pointer}
+  #l:hover{background:#555}
+</style>
 </head>
 <body>
-  <div id="status">Setting up server</div>
-  <button id="lockBtn">Control mouse</button>
-  <canvas id="canvas" width="1280" height="720"></canvas>
+<div id="s">getting ready..</div>
+<button id="l">Click to Control</button>
+<canvas id="c"></canvas>
 
-  <script>
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    const statusDiv = document.getElementById("status");
-    const lockBtn = document.getElementById("lockBtn");
+<script>
+const c=document.getElementById("c")
+const ctx=c.getContext("2d")
+const s=document.getElementById("s")
+const l=document.getElementById("l")
+c.width=1280
+c.height=720
 
-    const urlParams = new URLSearchParams(window.location.search);
-    let room = urlParams.get("room");
+const p=new URLSearchParams(location.search)
+const ws=new WebSocket(`wss://${location.host}?room=${p.get("room")||""}`)
 
-    const ws = new WebSocket(`wss://${location.host}?room=${room || ""}`);
-    let remoteCursors = {};
-    let myId = Math.random().toString(36).slice(2, 8);
-    let myCursor = { x: canvas.width / 2, y: canvas.height / 2 };
+let cursors={}
+let me=Math.random().toString(36).slice(2,10)
+let pos={x:c.width/2,y:c.height/2}
+let locked=false
+let lastFrame=0
 
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-
-      if (msg.type === "room") {
-        window.location.search = "?room=" + msg.room;
-      }
-
-      if (msg.type === "status") {
-        statusDiv.textContent = msg.text;
-      }
-
-      if (msg.type === "ready") {
-        statusDiv.style.opacity = 0;
-        setTimeout(() => statusDiv.remove(), 1000);
-      }
-
-      if (msg.type === "screenshot") {
-        const img = new Image();
-        img.onload = () => {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          for (const [id, c] of Object.entries(remoteCursors)) {
-            ctx.beginPath();
-            ctx.arc(c.x, c.y, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = id === myId ? "red" : "lime";
-            ctx.fill();
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          }
-
-          ctx.beginPath();
-          ctx.arc(myCursor.x, myCursor.y, 6, 0, 2 * Math.PI);
-          ctx.fillStyle = "red";
-          ctx.fill();
-          ctx.strokeStyle = "black";
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        };
-        img.src = "data:image/jpeg;base64," + msg.data;
-      }
-
-      if (msg.type === "cursor") {
-        remoteCursors[msg.id] = { x: msg.x, y: msg.y };
-      }
-    };
-
-    function sendCursor(x, y) {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: "cursor",
-          id: myId,
-          x, y
-        }));
-      }
+function draw(b64,frame){
+  if(frame<=lastFrame)return
+  lastFrame=frame
+  const i=new Image()
+  i.onload=()=>{
+    ctx.clearRect(0,0,c.width,c.height)
+    ctx.drawImage(i,0,0,c.width,c.height)
+    for(const[id,p]of Object.entries(cursors)){
+      ctx.fillStyle=id===me?"#ff0066":"#00ff99"
+      ctx.strokeStyle="#000"
+      ctx.lineWidth=3
+      ctx.beginPath()
+      ctx.arc(p.x,p.y,11,0,6.28)
+      ctx.fill()
+      ctx.stroke()
     }
+  }
+  i.src="data:image/jpeg;base64,"+b64
+}
 
-    lockBtn.addEventListener("click", () => {
-      canvas.requestPointerLock();
-    });
+ws.onmessage=e=>{
+  const m=JSON.parse(e.data)
+  if(m.type==="room")history.replaceState(null,"","?room="+m.room)
+  if(m.type==="status")s.textContent=m.text
+  if(m.type==="ready")setTimeout(()=>s.style.opacity=0.6,1500)
+  if(m.type==="screenshot")draw(m.data,m.frame)
+  if(m.type==="cursor")cursors[m.id]={x:m.x,y:m.y}
+}
 
-    document.addEventListener("pointerlockchange", () => {
-      if (document.pointerLockElement === canvas) {
-        console.log("Pointer lock active.");
-      } else {
-        console.log("Pointer lock released.");
-      }
-    });
+const send=o=>ws.readyState===WebSocket.OPEN&&ws.send(JSON.stringify(o))
 
-    // mouse movement
-    document.addEventListener("mousemove", (e) => {
-      if (document.pointerLockElement === canvas) {
-        myCursor.x = Math.max(0, Math.min(canvas.width, myCursor.x + e.movementX));
-        myCursor.y = Math.max(0, Math.min(canvas.height, myCursor.y + e.movementY));
-        sendCursor(myCursor.x, myCursor.y);
+l.onclick=()=>c.requestPointerLock()
 
-        ws.send(JSON.stringify({
-          type: "mouse",
-          x: Math.floor(myCursor.x),
-          y: Math.floor(myCursor.y),
-          action: "move"
-        }));
-      }
-    });
+document.addEventListener("pointerlockchange",()=>{
+  locked=document.pointerLockElement===c
+  l.textContent=locked?"locked in mouse":"lock mouse"
+})
 
-    canvas.addEventListener("mousedown", (e) => {
-      if (document.pointerLockElement === canvas) {
-        const btn = e.button === 2 ? "right" : "left";
-        ws.send(JSON.stringify({
-          type: "mouse",
-          x: Math.floor(myCursor.x),
-          y: Math.floor(myCursor.y),
-          button: btn,
-          action: "down"
-        }));
-      }
-    });
+document.addEventListener("mousemove",e=>{
+  if(locked){
+    pos.x=Math.max(0,Math.min(c.width-1,pos.x+e.movementX))
+    pos.y=Math.max(0,Math.min(c.height-1,pos.y+e.movementY))
+  }else{
+    const r=c.getBoundingClientRect()
+    pos.x=e.clientX-r.left
+    pos.y=e.clientY-r.top
+  }
+  cursors[me]=pos
+  send({type:"cursor",id:me,x:pos.x,y:pos.y})
+  send({type:"mouse",action:"move",x:Math.round(pos.x),y:Math.round(pos.y)})
+})
 
-    canvas.addEventListener("mouseup", (e) => {
-      if (document.pointerLockElement === canvas) {
-        const btn = e.button === 2 ? "right" : "left";
-        ws.send(JSON.stringify({
-          type: "mouse",
-          x: Math.floor(myCursor.x),
-          y: Math.floor(myCursor.y),
-          button: btn,
-          action: "up"
-        }));
-      }
-    });
+const btn={0:"left",2:"right"}
+c.addEventListener("mousedown",e=>send({type:"mouse",action:"down",button:btn[e.button]||"left",x:Math.round(pos.x),y:Math.round(pos.y)}))
+c.addEventListener("mouseup",e=>send({type:"mouse",action:"up",button:btn[e.button]||"left",x:Math.round(pos.x),y:Math.round(pos.y)}))
 
-    window.addEventListener("keydown", (e) => {
-      ws.send(JSON.stringify({
-        type: "keyboard",
-        key: e.key,
-        action: "down"
-      }));
-      e.preventDefault();
-    });
+window.addEventListener("keydown",e=>send({type:"keyboard",action:"down",key:e.key}))
+window.addEventListener("keyup",e=>send({type:"keyboard",action:"up",key:e.key}))
 
-    window.addEventListener("keyup", (e) => {
-      ws.send(JSON.stringify({
-        type: "keyboard",
-        key: e.key,
-        action: "up"
-      }));
-      e.preventDefault();
-    });
-
-    ws.onclose = () => {
-      alert("Lost connection to server.");
-    };
-  </script>
+ws.onopen=()=>s.textContent="Connected"
+ws.onclose=()=>{s.textContent="Disconnected";s.style.opacity=1}
+</script>
 </body>
 </html>
